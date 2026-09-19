@@ -68,4 +68,12 @@ public interface ReportRepository {
      * 쓰기 트랜잭션 안에서만 부릅니다. 읽기 전용 트랜잭션에서는 PostgreSQL 이 잠금 조회를 거절합니다.
      */
     Optional<Report> findByIdForUpdate(UUID reportId);
+
+    /**
+     * 그 계정의 제보를 행째 전부 지우고 지운 수를 돌려줍니다. 탈퇴를 받았을 때 씁니다.
+     *
+     * 처리 전 · 처리한 것을 가리지 않습니다. 본문은 그 사람이 쓴 글이라 남기지 않습니다.
+     * 쓰기 트랜잭션 안에서만 부릅니다. 탈퇴 처리는 Inbox 가 여는 트랜잭션 안에서 돕니다.
+     */
+    int deleteAllByAccountId(UUID accountId);
 }

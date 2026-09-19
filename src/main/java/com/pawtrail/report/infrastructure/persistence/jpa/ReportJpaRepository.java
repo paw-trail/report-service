@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -51,4 +52,11 @@ public interface ReportJpaRepository extends JpaRepository<Report, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT r FROM Report r WHERE r.id = :id")
     Optional<Report> findByIdForUpdate(@Param("id") UUID id);
+
+    // 탈퇴 — 한 문장으로 지움 (pet 과 같은 모양)
+    // 엔티티를 하나씩 읽어 지우면 제보 수만큼 DELETE 가 나감
+    // flushAutomatically 는 같은 트랜잭션에 쌓인 변경을 먼저 내보내 지운 뒤에 되살아나지 않게 함
+    @Modifying(flushAutomatically = true)
+    @Query("delete from Report r where r.accountId = :accountId")
+    int deleteAllByAccountId(@Param("accountId") UUID accountId);
 }

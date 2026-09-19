@@ -166,6 +166,22 @@ class ReportRepositoryImplTest extends IntegrationTestSupport {
         assertThat(missing.isPresent()).isFalse();
     }
 
+    @Test
+    @DisplayName("탈퇴 삭제는 그 계정의 제보만 처리 전 · 처리한 것 가리지 않고 지운다")
+    void 탈퇴_삭제() {
+        Report pending = reportRepository.saveNew(closed(ACCOUNT, PLACE));
+        Report done = reportRepository.saveNew(closed(ACCOUNT, OTHER_PLACE));
+        reportRepository.saveNew(closed(OTHER_ACCOUNT, PLACE));
+        jdbcTemplate.update("UPDATE report SET status = 'ACCEPTED' WHERE id = ?", done.getId());
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+
+        Integer deleted = tx.execute(status -> reportRepository.deleteAllByAccountId(ACCOUNT));
+
+        assertThat(deleted).isEqualTo(2);
+        assertThat(reportJpaRepository.count()).isEqualTo(1L);
+        assertThat(reportJpaRepository.existsById(pending.getId())).isFalse();
+    }
+
     private static Report closed(UUID accountId, UUID placeId) {
         return Report.submit(accountId, placeId, ReportType.CLOSED, null, null, "문을 닫았어요", null, null);
     }

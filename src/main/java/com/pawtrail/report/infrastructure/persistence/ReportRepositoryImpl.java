@@ -130,4 +130,9 @@ public class ReportRepositoryImpl implements ReportRepository {
     public Optional<Report> findByIdForUpdate(UUID reportId) {
         return reportJpaRepository.findByIdForUpdate(reportId);
     }
+
+    @Override
+    public int deleteAllByAccountId(UUID accountId) {
+        return reportJpaRepository.deleteAllByAccountId(accountId);
+    }
 }
