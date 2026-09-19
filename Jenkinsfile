@@ -8,7 +8,7 @@
 @Library('pawtrail-pipeline') _
 
 springServicePipeline(
-    serviceName: 'template',
+    serviceName: 'report-service',
     deployNode : 'app',
     instances  : 1
 )

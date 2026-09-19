@@ -44,6 +44,8 @@ dependencies {
     // starter-data-redis 가 전이로 끌어오지만 그러면 페이징이 캐시 의존성에 매달리므로
     // 직접 선언함
     // DB 를 쓰지 않는 서비스도 목록 응답을 반환하므로 이 줄은 남길 것
+    //
+    // * 이 서비스는 그 starter 를 뺐으므로 이 줄이 없으면 페이징이 통째로 안 됨
     implementation 'org.springframework.data:spring-data-commons'
 
     // ── 웹 · 검증 · 보안 · 상태확인 ────────────────────────────
@@ -81,8 +83,18 @@ dependencies {
     annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
     annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
 
-    // ── 캐시 · 이벤트 ─────────────────────────────────────────
-    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    // ── 이벤트 ────────────────────────────────────────────────
+    // starter-data-redis 를 뺐음
+    //
+    // 이 서비스는 Redis 를 쓰지 않는데 의존성만 있어도 자동 설정이 켜짐
+    // 그러면 상태 확인이 연결을 시도해 Redis 가 없는 환경에서 unhealthy 가 됨
+    // 기능은 멀쩡한데 상태만 틀리게 나오므로 진짜 문제의 신호를 못 믿게 됨
+    //
+    // * 캐시가 필요해지면 이 줄을 되살릴 것
+    //   자동 설정만 제외하는 방법도 있으나 그러면 왜 안 켜지는지 헤매게 됨
+    //
+    // * 페이징은 영향을 받지 않음
+    //   spring-data-commons 를 위에서 따로 선언해 두었음
     implementation 'org.springframework.boot:spring-boot-starter-kafka'
 
     // ── Spring Cloud ──────────────────────────────────────────
@@ -110,7 +122,6 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
-    testImplementation 'org.springframework.boot:spring-boot-starter-data-redis-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-kafka-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-zipkin-test'
 
