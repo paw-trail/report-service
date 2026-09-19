@@ -7,7 +7,7 @@
 #   main 에 있는 세 줄 중 spring.application.name 과 spring.profiles.default 를 다시 적었고
 #   spring.config.import 는 아래에서 설정 서버를 끄므로 적지 않음
 #
-# *아래 값 중 넷은 config 저장소 1계층(application.yml)의 사본임
+# *아래 값 둘(ddl-auto · flyway.locations)은 config 저장소 1계층(application.yml)의 사본임
 #   테스트에서는 설정 서버를 끄므로 1계층 값이 하나도 내려오지 않기 때문임
 #   config 저장소에서 그 값을 바꾸면 여기도 함께 봐야 함
 
@@ -15,7 +15,7 @@ spring:
   application:
     # 가려진 main 쪽 값을 다시 적은 것임
     # 없으면 로그의 appName 과 유레카 등록 이름이 unknown 이 됨
-    name: template-service
+    name: report-service
 
   profiles:
     # 가려진 main 쪽 값을 다시 적은 것임
@@ -45,6 +45,24 @@ spring:
     locations: classpath:db/migration/common,classpath:db/migration/service
 
   kafka:
+    # 테스트가 로컬 카프카로 이벤트를 내보내지 않게 막음
+    #
+    # 관리자가 제보를 처리하면 서비스가 report.resolved 를 outbox 에 기록하고
+    # 커밋 직후 OutboxCommitListener 가 곧바로 발행을 시도함
+    # 지금 처리 검사는 흉내 낸 기록기를 쓰지만 실제로 커밋하는 검사가 생기면 발행을 시도함
+    #
+    # 주소를 적지 않으면 기본값 localhost:9092 로 붙는데
+    # 로컬에 infra 의 카프카가 떠 있으면 검증용 이벤트가 개발 토픽에 실제로 쌓임
+    # 그래서 아무도 듣지 않는 주소로 돌리고 메타데이터를 기다리는 시간도 1초로 줄임
+    #   max.block.ms 기본값은 60초이며 그동안 발행 스레드가 outbox 행 잠금을 쥔 채 멈춤
+    # 발행이 실패하면 그 행의 retry_count 만 오르고 검사 결과에는 영향이 없음
+    # 되풀이 발행(OutboxRelay)은 app.outbox.relay.enabled 가 없어 테스트에서 안 뜸
+    # policy 와 같은 설정임
+    bootstrap-servers: localhost:1
+    producer:
+      properties:
+        max.block.ms: 1000
+
     listener:
       # 테스트는 리스너 컨테이너를 띄우지 않음
       #
