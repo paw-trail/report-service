@@ -8,6 +8,7 @@ import com.pawtrail.report.domain.model.Report;
 import com.pawtrail.report.domain.repository.ReportRepository;
 import com.pawtrail.report.infrastructure.persistence.jpa.ReportJpaRepository;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -114,5 +115,19 @@ public class ReportRepositoryImpl implements ReportRepository {
     public Page<Report> findByAccountId(UUID accountId, int page, int size) {
         return reportJpaRepository.findByAccountIdOrderByCreatedAtDescIdDesc(
                 accountId, PageRequest.of(page, size));
+    }
+
+    @Override
+    public Page<Report> findForAdmin(ReportStatus status, int page, int size) {
+        PageRequest pageRequest = PageRequest.of(page, size);
+        if (status == null) {
+            return reportJpaRepository.findAllByOrderByCreatedAtDescIdDesc(pageRequest);
+        }
+        return reportJpaRepository.findByStatusOrderByCreatedAtDescIdDesc(status, pageRequest);
+    }
+
+    @Override
+    public Optional<Report> findByIdForUpdate(UUID reportId) {
+        return reportJpaRepository.findByIdForUpdate(reportId);
     }
 }

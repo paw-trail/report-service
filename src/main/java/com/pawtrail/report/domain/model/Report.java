@@ -124,4 +124,37 @@ public class Report extends BaseEntity {
         report.status = ReportStatus.PENDING;
         return report;
     }
+
+    /**
+     * 관리자가 처리합니다. 승인이나 반려 한 번뿐입니다.
+     *
+     * 처리한 제보를 다시 처리하지 않습니다.
+     * 결과가 report.resolved 로 한 번 나가므로 두 번 처리하면 사용자가 받는 알림이 뒤집힙니다.
+     *
+     * 서비스가 행을 잠그고 읽어 처리 전인지 먼저 보고 409 로 돌려보내므로
+     * 여기까지 오면 우리 코드가 잘못 부른 것입니다. 그때는 예외를 던져 500 이 나가게 둡니다.
+     *
+     * 처리한 관리자는 계정 식별자 문자열로 남깁니다. 감사 칸(updated_by)과 같은 모양입니다.
+     *
+     * @throws IllegalStateException    이미 처리한 제보이면
+     * @throws IllegalArgumentException 처리 결과가 승인 · 반려가 아니거나 메모 · 처리자가 비어 있으면
+     */
+    public void resolve(ReportStatus result, String memo, String reviewedBy) {
+        if (status != ReportStatus.PENDING) {
+            throw new IllegalStateException("이미 처리한 제보입니다: " + id + " (" + status + ")");
+        }
+        if (result != ReportStatus.ACCEPTED && result != ReportStatus.REJECTED) {
+            throw new IllegalArgumentException("처리 결과는 ACCEPTED · REJECTED 만 됩니다: " + result);
+        }
+        if (memo == null || memo.isBlank()) {
+            throw new IllegalArgumentException("memo 가 비어 있습니다");
+        }
+        if (reviewedBy == null || reviewedBy.isBlank()) {
+            throw new IllegalArgumentException("reviewedBy 가 비어 있습니다");
+        }
+        this.status = result;
+        this.memo = memo;
+        this.reviewedBy = reviewedBy;
+        this.reviewedAt = LocalDateTime.now();
+    }
 }

@@ -1,8 +1,10 @@
 package com.pawtrail.report.domain.repository;
 
+import com.pawtrail.report.domain.enums.ReportStatus;
 import com.pawtrail.report.domain.enums.ReportType;
 import com.pawtrail.report.domain.model.Report;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 
@@ -49,4 +51,21 @@ public interface ReportRepository {
      * 식별자가 UUID 버전 7 이라 그 순서가 곧 만들어진 순서입니다.
      */
     Page<Report> findByAccountId(UUID accountId, int page, int size);
+
+    /**
+     * 관리자 목록을 최신순으로 한 쪽 읽습니다.
+     *
+     * 상태를 주면 그 상태만, 비워 두면 전부입니다. 차례는 내 목록과 같습니다.
+     */
+    Page<Report> findForAdmin(ReportStatus status, int page, int size);
+
+    /**
+     * 처리하려고 한 건을 잠가 읽습니다.
+     *
+     * 두 관리자가 같은 카드를 동시에 누르면 뒤에 온 쪽이 앞의 처리가 끝날 때까지 기다렸다가
+     * 이미 처리된 상태를 보게 됩니다. 잠그지 않으면 둘 다 처리 전으로 읽고 결과가 두 번 나갑니다.
+     *
+     * 쓰기 트랜잭션 안에서만 부릅니다. 읽기 전용 트랜잭션에서는 PostgreSQL 이 잠금 조회를 거절합니다.
+     */
+    Optional<Report> findByIdForUpdate(UUID reportId);
 }

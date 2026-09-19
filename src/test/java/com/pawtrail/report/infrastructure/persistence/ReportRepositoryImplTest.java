@@ -5,12 +5,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.pawtrail.common.exception.CustomException;
 import com.pawtrail.report.IntegrationTestSupport;
+import com.pawtrail.report.domain.enums.ReportStatus;
 import com.pawtrail.report.domain.enums.ReportType;
 import com.pawtrail.report.domain.exception.ReportErrorCode;
 import com.pawtrail.report.domain.model.Report;
 import com.pawtrail.report.domain.repository.ReportRepository;
 import com.pawtrail.report.infrastructure.persistence.jpa.ReportJpaRepository;
 import java.time.LocalDate;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,6 +21,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * V20 의 제약과 저장소 조회를 실제 PostgreSQL 로 검사합니다.
@@ -43,6 +47,9 @@ class ReportRepositoryImplTest extends IntegrationTestSupport {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     @AfterEach
     void cleanUp() {
@@ -127,6 +134,36 @@ class ReportRepositoryImplTest extends IntegrationTestSupport {
                 VALUES (?, ?, ?, 'REVIEW_ABUSE', '욕설이 있어요', 'PENDING', now(), 'test', now(), 'test')
                 """, UUID.randomUUID(), ACCOUNT, PLACE))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("관리자 목록은 상태를 주면 그 상태만, 비우면 전부를 최신순으로 준다")
+    void 관리자_목록() {
+        Report first = reportRepository.saveNew(closed(ACCOUNT, PLACE));
+        Report second = reportRepository.saveNew(closed(OTHER_ACCOUNT, PLACE));
+        jdbcTemplate.update("UPDATE report SET status = 'REJECTED' WHERE id = ?", first.getId());
+
+        Page<Report> pending = reportRepository.findForAdmin(ReportStatus.PENDING, 0, 20);
+        Page<Report> all = reportRepository.findForAdmin(null, 0, 20);
+
+        assertThat(pending.getTotalElements()).isEqualTo(1L);
+        assertThat(pending.getContent().get(0).getId()).isEqualTo(second.getId());
+        assertThat(all.getTotalElements()).isEqualTo(2L);
+        assertThat(all.getContent().get(0).getId()).isEqualTo(second.getId());
+    }
+
+    @Test
+    @DisplayName("잠금 조회는 쓰기 트랜잭션 안에서 행을 돌려주고, 없는 식별자면 비어 있다")
+    void 잠금_조회() {
+        Report saved = reportRepository.saveNew(closed(ACCOUNT, PLACE));
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+
+        Optional<Report> found = tx.execute(status -> reportRepository.findByIdForUpdate(saved.getId()));
+        Optional<Report> missing = tx.execute(status -> reportRepository.findByIdForUpdate(UUID.randomUUID()));
+
+        assertThat(found.isPresent()).isTrue();
+        assertThat(found.get().getId()).isEqualTo(saved.getId());
+        assertThat(missing.isPresent()).isFalse();
     }
 
     private static Report closed(UUID accountId, UUID placeId) {

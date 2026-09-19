@@ -3,11 +3,16 @@ package com.pawtrail.report.infrastructure.persistence.jpa;
 import com.pawtrail.report.domain.enums.ReportStatus;
 import com.pawtrail.report.domain.enums.ReportType;
 import com.pawtrail.report.domain.model.Report;
+import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * 제보 표를 JPA 로 읽고 씁니다.
@@ -35,4 +40,15 @@ public interface ReportJpaRepository extends JpaRepository<Report, UUID> {
     long countByAccountIdAndCreatedAtGreaterThanEqual(UUID accountId, LocalDateTime since);
 
     Page<Report> findByAccountIdOrderByCreatedAtDescIdDesc(UUID accountId, Pageable pageable);
+
+    // 관리자 목록 — 상태를 고른 경우 · 전부
+    Page<Report> findByStatusOrderByCreatedAtDescIdDesc(ReportStatus status, Pageable pageable);
+
+    Page<Report> findAllByOrderByCreatedAtDescIdDesc(Pageable pageable);
+
+    // 처리할 때 한 건을 잠가 읽음 (SELECT … FOR UPDATE)
+    // place 가 수집 대기를 처리할 때와 같은 모양
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM Report r WHERE r.id = :id")
+    Optional<Report> findByIdForUpdate(@Param("id") UUID id);
 }
